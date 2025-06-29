@@ -1,31 +1,28 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import iTermState, { iTermSession } from './iTermState.js';
 
 const execPromise = promisify(exec);
 
 export default class SessionManager {
-  static async launchSession(sessionName: string): Promise<string> {
-    const appleScript = `
-      tell application "iTerm2"
-        create window with profile "MCP_CONTROLLED"
-        tell current session of current window
-          set name to "${sessionName}"
-          return tty
-        end tell
-      end tell
-    `;
-    const { stdout } = await execPromise(`osascript -e '${appleScript}'`);
+  static async launchSession(): Promise<string> {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const scriptPath = path.join(__dirname, 'iterm_spawn.js');
+    const command = `osascript -l JavaScript ${scriptPath}`;
+    
+    const { stdout } = await execPromise(command);
     const tty = stdout.trim();
+
     await iTermState.getInstance().refresh();
     return tty;
   }
 
-  static async listSessions(): Promise<string[]> {
+  static async listSessions(): Promise<iTermSession[]> {
     await iTermState.getInstance().refresh();
     return iTermState.getInstance().getSessions()
-      .filter(s => s.profileName === 'MCP_CONTROLLED')
-      .map(s => s.tty);
+      .filter(s => s.profileName.startsWith('MCP_'));
   }
   
   static async listAllSessions(): Promise<iTermSession[]> {
@@ -52,5 +49,14 @@ export default class SessionManager {
       end tell
     `;
     await execPromise(`osascript -e '${appleScript}'`);
+  }
+
+  static async closeSession(tty: string): Promise<string> {
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const scriptPath = path.join(__dirname, 'close_session.js');
+    const command = `osascript -l JavaScript ${scriptPath} ${tty}`;
+    
+    const { stdout } = await execPromise(command);
+    return stdout.trim();
   }
 }

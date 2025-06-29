@@ -31,16 +31,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "launch_session",
-        description: "Launches a new iTerm2 session with a given name.",
+        description: "Launches a new iTerm2 session.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        }
+      },
+      {
+        name: "close_session",
+        description: "Closes a specific MCP-controlled iTerm2 session.",
         inputSchema: {
           type: "object",
           properties: {
-            sessionName: {
+            tty: {
               type: "string",
-              description: "The name for the new session."
+              description: "The TTY of the session to close."
             },
           },
-          required: ["sessionName"]
+          required: ["tty"]
         }
       },
       {
@@ -136,14 +144,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   switch (toolName) {
     case "launch_session": {
-      const sessionName = String(request.params.arguments?.sessionName);
-      const tty = await SessionManager.launchSession(sessionName);
+      const tty = await SessionManager.launchSession();
       activeSession = tty;
       return { content: [{ type: "text", text: `Launched and activated session with TTY: ${tty}` }] };
     }
+    case "close_session": {
+      const tty = String(request.params.arguments?.tty);
+      const result = await SessionManager.closeSession(tty);
+      if (activeSession === tty) {
+        activeSession = null;
+      }
+      return { content: [{ type: "text", text: result }] };
+    }
     case "list_sessions": {
       const sessions = await SessionManager.listSessions();
-      return { content: [{ type: "text", text: `Available sessions (by TTY): ${sessions.join(', ')}` }] };
+      return { content: [{ type: "text", text: JSON.stringify(sessions, null, 2) }] };
     }
     case "list_all_sessions": {
       const sessions = await SessionManager.listAllSessions();
