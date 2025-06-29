@@ -14,19 +14,14 @@ export default class TtyOutputReader {
   }
 
   static async retrieveBuffer(): Promise<string> {
-    const ascript = `
+    const appleScript = `
       tell application "iTerm2"
-        tell front window
-          tell current session of current tab
-            set numRows to number of rows
-            set allContent to contents
-            return allContent
-          end tell
+        tell current session of current window
+          contents
         end tell
       end tell
     `;
-    
-    const { stdout: finalContent } = await execPromise(`osascript -e '${ascript}'`);
-    return finalContent.trim();
+    const { stdout } = await execPromise(`osascript -e '${appleScript}'`);
+    return stdout.trim();
   }
 }

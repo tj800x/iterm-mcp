@@ -9,11 +9,15 @@ import {
 import CommandExecutor from "./CommandExecutor.js";
 import TtyOutputReader from "./TtyOutputReader.js";
 import SendControlCharacter from "./SendControlCharacter.js";
+import SessionManager from "./SessionManager.js";
+import iTermState from "./iTermState.js";
+
+let activeSession: string | null = null;
 
 const server = new Server(
   {
     name: "iterm-mcp",
-    version: "0.1.0",
+    version: "0.4.0",
   },
   {
     capabilities: {
@@ -25,6 +29,50 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
+      {
+        name: "launch_session",
+        description: "Launches a new iTerm2 session with a given name.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            sessionName: {
+              type: "string",
+              description: "The name for the new session."
+            },
+          },
+          required: ["sessionName"]
+        }
+      },
+      {
+        name: "list_sessions",
+        description: "Lists all active iTerm2 sessions managed by this MCP.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        }
+      },
+      {
+        name: "list_all_sessions",
+        description: "Lists all iTerm2 sessions regardless of controllability.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        }
+      },
+      {
+        name: "set_active_session",
+        description: "Sets the active iTerm2 session for subsequent commands.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            sessionTty: {
+              type: "string",
+              description: "The TTY of the session to activate."
+            },
+          },
+          required: ["sessionTty"]
+        }
+      },
       {
         name: "write_to_terminal",
         description: "Writes text to the active iTerm terminal - often used to run a command in the terminal",
@@ -50,7 +98,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: "The number of lines of output to read."
             },
           },
-          required: ["linesOfOutput"]
         }
       },
       {
@@ -72,7 +119,42 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  switch (request.params.name) {
+  const toolName = request.params.name;
+  console.log(`Tool called: ${toolName}, Active session: ${activeSession}`);
+  const toolsRequiringSession = [
+    "set_active_session",
+    "write_to_terminal",
+    "read_terminal_output",
+    "send_control_character",
+  ];
+
+  if (toolsRequiringSession.includes(toolName) && !activeSession) {
+    throw new Error(
+      `Tool '${toolName}' requires an active session. Please launch or set an active session.`
+    );
+  }
+
+  switch (toolName) {
+    case "launch_session": {
+      const sessionName = String(request.params.arguments?.sessionName);
+      const tty = await SessionManager.launchSession(sessionName);
+      activeSession = tty;
+      return { content: [{ type: "text", text: `Launched and activated session with TTY: ${tty}` }] };
+    }
+    case "list_sessions": {
+      const sessions = await SessionManager.listSessions();
+      return { content: [{ type: "text", text: `Available sessions (by TTY): ${sessions.join(', ')}` }] };
+    }
+    case "list_all_sessions": {
+      const sessions = await SessionManager.listAllSessions();
+      return { content: [{ type: "text", text: JSON.stringify(sessions, null, 2) }] };
+    }
+    case "set_active_session": {
+      const sessionTty = String(request.params.arguments?.sessionTty);
+      await SessionManager.setActiveSession(sessionTty);
+      activeSession = sessionTty;
+      return { content: [{ type: "text", text: `Active session set to TTY: ${activeSession}` }] };
+    }
     case "write_to_terminal": {
       let executor = new CommandExecutor();
       const command = String(request.params.arguments?.command);
@@ -123,6 +205,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
+  await iTermState.getInstance().refresh();
 }
 
 main().catch((error) => {

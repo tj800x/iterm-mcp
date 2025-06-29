@@ -11,26 +11,18 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 class CommandExecutor {
   async executeCommand(command: string): Promise<string> {
-    const escapedCommand = this.escapeForAppleScript(command);
-    
+    const escapedCommand = command.replace(/"/g, '\\"');
+    const appleScript = `
+      tell application "iTerm2"
+        tell current session of current window
+          write text "${escapedCommand}"
+        end tell
+      end tell
+    `;
     try {
-      await execPromise(`/usr/bin/osascript -e 'tell application "iTerm2" to tell current session of current window to write text "${escapedCommand}"'`);
-      
-      // Wait until iterm reports that processing is done
-      while (await this.isProcessing()) {
-        await sleep(100);
-      }
-      
-      const ttyPath = await this.retrieveTtyPath();
-      while (await this.isWaitingForUserInput(ttyPath) === false) {
-        await sleep(100);
-      }
-
-      // Give a small delay for output to settle
-      await sleep(200);
-      
-      const afterCommandBuffer = await TtyOutputReader.retrieveBuffer()
-      return afterCommandBuffer
+      await execPromise(`osascript -e '${appleScript}'`);
+      await sleep(500);
+      return await TtyOutputReader.retrieveBuffer();
     } catch (error: unknown) {
       throw new Error(`Failed to execute command: ${(error as Error).message}`);
     }
@@ -73,23 +65,6 @@ class CommandExecutor {
     }
   }
 
-  private escapeForAppleScript(str: string): string {
-    // First, escape any backslashes
-    str = str.replace(/\\/g, '\\\\');
-    
-    // Escape double quotes
-    str = str.replace(/"/g, '\\"');
-    
-    // Handle single quotes by breaking out of the quote, escaping the quote, and going back in
-    str = str.replace(/'/g, "'\\''");
-    
-    // Handle special characters
-    str = str.replace(/[^\x20-\x7E]/g, (char) => {
-      return '\\u' + char.charCodeAt(0).toString(16).padStart(4, '0');
-    });
-    
-    return str;
-  }
 
   private async retrieveTtyPath(): Promise<string> {
     try {
