@@ -4,8 +4,14 @@ import { promisify } from 'node:util';
 const execPromise = promisify(exec);
 
 class CommandExecutor {
+  private escapeStringForAppleScript(str: string): string {
+    // First, escape backslashes.
+    // Then, escape double quotes.
+    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
   async executeCommand(tty: string, command: string): Promise<void> {
-    const escapedCommand = command.replace(/"/g, '\\"');
+    const escapedCommand = this.escapeStringForAppleScript(command);
     const appleScript = `
       tell application "iTerm2"
         -- Find the session with the matching TTY and write to it.
