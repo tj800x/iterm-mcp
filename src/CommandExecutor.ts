@@ -4,22 +4,16 @@ import { promisify } from 'node:util';
 const execPromise = promisify(exec);
 
 class CommandExecutor {
-  private escapeStringForAppleScript(str: string): string {
-    // First, escape backslashes.
-    // Then, escape double quotes.
-    return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  }
-
   async executeCommand(tty: string, command: string): Promise<void> {
-    const escapedCommand = this.escapeStringForAppleScript(command);
+    // This is the canonical way to safely pass a command to a shell.
+    // The 'quoted form of' property handles all necessary escaping.
     const appleScript = `
       tell application "iTerm2"
-        -- Find the session with the matching TTY and write to it.
         repeat with w in windows
           repeat with t in tabs of w
             repeat with s in sessions of t
               if tty of s is "${tty}" then
-                tell s to write text "${escapedCommand}"
+                tell s to write text "eval " & (quoted form of "${command}")
                 return
               end if
             end repeat
@@ -28,7 +22,7 @@ class CommandExecutor {
       end tell
     `;
     try {
-      await execPromise(`osascript -e '${appleScript}'`);
+      await execPromise(`osascript -e '${appleScript.replace(/'/g, "'\\''")}'`);
     } catch (error: unknown) {
       throw new Error(`Failed to execute command in TTY ${tty}: ${(error as Error).message}`);
     }
