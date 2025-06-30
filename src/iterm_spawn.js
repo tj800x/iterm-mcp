@@ -5,14 +5,26 @@ function run(argv) {
     const iTerm = Application('iTerm');
     iTerm.activate();
     
-    let win = iTerm.currentWindow();
-    if (!win) {
-        win = iTerm.createWindow({ withProfile: "MCP_CONTROLLED" });
+    let tab;
+    if (iTerm.windows().length === 0) {
+        // If no windows exist, create one. This also creates a tab.
+        const win = iTerm.createWindow({ withProfile: "MCP_CONTROLLED" });
+        tab = win.currentTab();
+    } else {
+        // If windows exist, create a new tab in the current window.
+        let win = iTerm.currentWindow();
+        if (!win) {
+            // Fallback to the first window if no window is "current"
+            win = iTerm.windows[0];
+        }
+        tab = win.createTab({ withProfile: "MCP_CONTROLLED" });
     }
-    
-    const tab = win.createTab({ withProfile: "MCP_CONTROLLED" });
+
+    // Add a fixed delay to allow iTerm to initialize the session fully.
+    sleep(3);
 
     let session = null;
+    // Poll for the session to become available in the new tab.
     for (let i = 0; i < 40; ++i) {
       try { 
         session = tab.currentSession(); 
@@ -24,5 +36,5 @@ function run(argv) {
     if (session) {
         return session.tty();
     }
-    return ""; // Return empty string if session not found
+    return "";
 }

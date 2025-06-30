@@ -7,21 +7,28 @@ function run(argv) {
     const iTerm = Application('iTerm');
     let sessionClosed = false;
 
-    iTerm.windows().forEach(window => {
-        window.tabs().forEach(tab => {
-            tab.sessions().forEach(session => {
+    const windows = iTerm.windows();
+    for (let i = windows.length - 1; i >= 0; i--) {
+        const window = windows[i];
+        const tabs = window.tabs();
+        for (let j = tabs.length - 1; j >= 0; j--) {
+            const tab = tabs[j];
+            const sessions = tab.sessions();
+            for (let k = sessions.length - 1; k >= 0; k--) {
+                const session = sessions[k];
                 if (session.tty() === ttyToClose) {
                     if (session.profileName().startsWith("MCP_")) {
-                        tab.close(); // Close the parent tab
+                        tab.close();
                         sessionClosed = true;
-                        return; // Exit the loop once found and closed
+                        // Using break statements to exit the loops
+                        break;
                     }
                 }
-            });
-            if (sessionClosed) return;
-        });
-        if (sessionClosed) return;
-    });
+            }
+            if (sessionClosed) break;
+        }
+        if (sessionClosed) break;
+    }
 
     return sessionClosed ? `Session ${ttyToClose} closed.` : `Error: Could not find an MCP-controlled session with TTY ${ttyToClose}.`;
 }
