@@ -1,40 +1,29 @@
 function run(argv) {
-    ObjC.import('stdlib');
-    function sleep(s) { delay(s); }
+    const app = Application.currentApplication();
+    app.includeStandardAdditions = true;
 
-    const iTerm = Application('iTerm');
-    iTerm.activate();
-    
-    let tab;
-    if (iTerm.windows().length === 0) {
-        // If no windows exist, create one. This also creates a tab.
-        const win = iTerm.createWindow({ withProfile: "MCP_CONTROLLED" });
-        tab = win.currentTab();
-    } else {
-        // If windows exist, create a new tab in the current window.
-        let win = iTerm.currentWindow();
-        if (!win) {
-            // Fallback to the first window if no window is "current"
-            win = iTerm.windows[0];
-        }
-        tab = win.createTab({ withProfile: "MCP_CONTROLLED" });
-    }
+    // Using a raw AppleScript string is more robust for this specific edge case.
+    const appleScript = `
+      tell application "iTerm2"
+        activate
+        
+        if (count of windows) is 0 then
+          create window with profile "MCP_CONTROLLED"
+        else
+          tell current window
+            create tab with profile "MCP_CONTROLLED"
+          end tell
+        end if
+        
+        -- Give the new session a moment to initialize before getting its TTY
+        delay 1
+        
+        tell current window to tell current tab to tell current session
+          return tty
+        end tell
+      end tell
+    `;
 
-    // Add a fixed delay to allow iTerm to initialize the session fully.
-    sleep(3);
-
-    let session = null;
-    // Poll for the session to become available in the new tab.
-    for (let i = 0; i < 40; ++i) {
-      try { 
-        session = tab.currentSession(); 
-        if (session) break; 
-      } catch (e) {}
-      sleep(0.25);
-    }
-
-    if (session) {
-        return session.tty();
-    }
-    return "";
+    // The 'osascript -e' command executes the script string.
+    return app.doShellScript(`osascript -e '${appleScript.replace(/'/g, "'\\''")}'`);
 }
