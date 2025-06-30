@@ -45,6 +45,5 @@ try {
   const newTab = createTabWithProfileAndColor(wind, "MCP_CONTROLLED", colorRed);
   // Optionally, do more with `newTab` or its session...
 } catch (e) {
-  console.log(e.message);
+  // console.log(e.message);
 }
-

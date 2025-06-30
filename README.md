@@ -31,7 +31,7 @@ Create this file in the root of the `iterm-mcp` project directory to configure t
 {
   "mcp_prefix": "MCP_",
   "mcp_profiles": [
-    "MCP_CONTROLLED",
+    "MCP_ZSH_SANDBOXED",
     "MCP_PYTHON",
     "MCP_JULIA"
   ]
@@ -43,7 +43,9 @@ Create this file in the root of the `iterm-mcp` project directory to configure t
 
 ## Tools
 
-*   **`get_mcp_profiles`**: Returns a list of the available MCP profiles that can be launched.
+*   **`get_mcp_profiles`**: Returns a list of the available MCP profiles that can be launched. These are the profiles defined in `iterm_mcp_settings.json` that the AI is allowed to use.
+    *   Arguments: None
+*   **`all_profiles`**: Returns a list of all available iTerm2 profiles, regardless of whether they are MCP-enabled. Note that only profiles listed in `iterm_mcp_settings.json` can be launched by the AI.
     *   Arguments: None
 *   **`launch_session`**: Launches a new iTerm2 session with a specific, allowed profile.
     *   Arguments:
@@ -55,10 +57,14 @@ Create this file in the root of the `iterm-mcp` project directory to configure t
     *   Arguments: None
 *   **`list_all_sessions`**: Lists all iTerm2 sessions regardless of controllability.
     *   Arguments: None
-*   **`write_to_terminal`**: Writes text to a specific iTerm terminal.
+*   **`execute_command_in_terminal`**: Executes a command or writes text to a specific iTerm terminal. **Note:** For commands to execute, you must include a newline character (`\n`) at the end of the command string.
     *   Arguments:
         *   `tty` (string, required): The TTY of the session to write to.
         *   `command` (string, required): The command or text to write.
+*   **`write_base64_to_terminal`**: Writes a Base64 encoded string to a specific iTerm terminal. This is the most reliable way to write complex strings with special characters. **Note:** This tool does not automatically add a newline character. If you need one, you must include it in the original string before encoding.
+    *   Arguments:
+        *   `tty` (string, required): The TTY of the session to write to.
+        *   `base64_command` (string, required): The Base64 encoded string to write.
 *   **`read_terminal_output`**: Reads output from a specific iTerm terminal.
     *   Arguments:
         *   `tty` (string, required): The TTY of the session to read from.
@@ -67,6 +73,10 @@ Create this file in the root of the `iterm-mcp` project directory to configure t
     *   Arguments:
         *   `tty` (string, required): The TTY of the session to send the character to.
         *   `letter` (string, required): The letter for the control character (e.g., `"C"`, `"D"`, `"Z"`).
+
+## Usage Notes
+
+If the user asks for help with a command or issue within a managed iTerm session, the AI should use the `read_terminal_output` tool to assess the situation and provide assistance.
 
 ## Installation
 

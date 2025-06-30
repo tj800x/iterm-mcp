@@ -11,7 +11,7 @@ async function main() {
   const scriptPath = path.join(__dirname, 'iterm_sessions.js');
   const command = `osascript -l JavaScript ${scriptPath}`;
 
-  console.log(`Executing command: ${command}`);
+  console.error(`Executing command: ${command}`);
 
   try {
     const { stdout, stderr } = await execPromise(command);
@@ -20,13 +20,13 @@ async function main() {
       console.error('Stderr:', stderr);
     }
 
-    console.log('Stdout:', stdout);
+    console.error('Stdout:', stdout);
     
     if (stdout.trim()) {
         const sessions = JSON.parse(stdout);
-        console.log('Parsed sessions:', sessions);
+        console.error('Parsed sessions:', sessions);
     } else {
-        console.log('No sessions found or iTerm is not running.');
+        console.error('No sessions found or iTerm is not running.');
     }
 
   } catch (error) {

@@ -34,6 +34,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {},
+        },
+        requires_approval: false
+      },
+      {
+        name: "all_profiles",
+        description: "Returns a list of all available iTerm2 profiles.",
+        inputSchema: {
+          type: "object",
+          properties: {},
         }
       },
       {
@@ -70,7 +79,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {},
-        }
+        },
+        requires_approval: false
       },
       {
         name: "list_all_sessions",
@@ -78,11 +88,30 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: {
           type: "object",
           properties: {},
+        },
+        requires_approval: false
+      },
+      {
+        name: "execute_command_in_terminal",
+        description: "Executes a command in a specific iTerm terminal.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            tty: {
+              type: "string",
+              description: "The TTY of the session to execute the command in."
+            },
+            command: {
+              type: "string",
+              description: "The command to execute."
+            },
+          },
+          required: ["tty", "command"]
         }
       },
       {
-        name: "write_to_terminal",
-        description: "Writes text to a specific iTerm terminal.",
+        name: "write_base64_to_terminal",
+        description: "Writes a base64 encoded string to a specific iTerm terminal.",
         inputSchema: {
           type: "object",
           properties: {
@@ -90,12 +119,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: "string",
               description: "The TTY of the session to write to."
             },
-            command: {
+            base64_command: {
               type: "string",
-              description: "The command to run or text to write to the terminal."
+              description: "The base64 encoded string to write."
             },
           },
-          required: ["tty", "command"]
+          required: ["tty", "base64_command"]
         }
       },
       {
@@ -140,11 +169,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const toolName = request.params.name;
-  console.log(`Tool called: ${toolName}`);
+  console.error(`Tool called: ${toolName}`);
 
   switch (toolName) {
     case "get_mcp_profiles": {
       const profiles = SessionManager.getMcpProfiles();
+      return { content: [{ type: "text", text: JSON.stringify(profiles, null, 2) }] };
+    }
+    case "all_profiles": {
+      const profiles = await SessionManager.getAllProfiles();
       return { content: [{ type: "text", text: JSON.stringify(profiles, null, 2) }] };
     }
     case "launch_session": {
@@ -165,12 +198,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const sessions = await SessionManager.listAllSessions();
       return { content: [{ type: "text", text: JSON.stringify(sessions, null, 2) }] };
     }
-    case "write_to_terminal": {
+    case "execute_command_in_terminal": {
       const tty = String(request.params.arguments?.tty);
       const command = String(request.params.arguments?.command);
       const executor = new CommandExecutor();
       await executor.executeCommand(tty, command);
-      return { content: [{ type: "text", text: `Wrote command to TTY ${tty}.` }] };
+      return { content: [{ type: "text", text: `Executed command in TTY ${tty}.` }] };
+    }
+    case "write_base64_to_terminal": {
+      const tty = String(request.params.arguments?.tty);
+      const base64Command = String(request.params.arguments?.base64_command);
+      const executor = new CommandExecutor();
+      await executor.writeBase64(tty, base64Command);
+      return { content: [{ type: "text", text: `Wrote base64 command to TTY ${tty}.` }] };
     }
     case "read_terminal_output": {
       const tty = String(request.params.arguments?.tty);

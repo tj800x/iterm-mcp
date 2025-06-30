@@ -48,11 +48,10 @@ export default class iTermState {
       }
       // It's better to check if stdout is empty or just whitespace
       if (!stdout.trim()) {
-        console.log("OsaScript produced no output. Current sessions are empty or iTerm is not running.");
+        console.error("OsaScript produced no output. Current sessions are empty or iTerm is not running.");
         this.windows = [];
         return;
       }
-      console.log("Raw osascript output:", stdout);
       const sessions: iTermSession[] = JSON.parse(stdout);
       this.windows = [{
         id: "dummy_window",

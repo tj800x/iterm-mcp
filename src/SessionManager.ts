@@ -35,6 +35,13 @@ export default class SessionManager {
   static getMcpProfiles(): string[] {
     return SettingsManager.getSettings().mcp_profiles;
   }
+
+  static async getAllProfiles(): Promise<string[]> {
+    const command = `plutil -convert json -o - ~/Library/Preferences/com.googlecode.iterm2.plist`;
+    const { stdout } = await execPromise(command);
+    const plist = JSON.parse(stdout);
+    return plist["New Bookmarks"].map((bookmark: any) => bookmark.Name);
+  }
   
   static async listAllSessions(): Promise<iTermSession[]> {
     await iTermState.getInstance().refresh();

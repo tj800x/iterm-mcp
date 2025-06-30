@@ -1,8 +1,9 @@
 {
   "mcp_prefix": "MCP_",
   "mcp_profiles": [
-    "MCP_CONTROLLED",
+    "MCP_ZSH_SANDBOXED",
     "MCP_PYTHON",
-    "MCP_JULIA"
+    "MCP_JULIA",
+    "MCP_OCTAVE"
   ]
 }

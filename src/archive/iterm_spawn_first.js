@@ -12,24 +12,24 @@ const isRunning = systemEvents.processes.byName('iTerm2').exists();
 let startupCondition = 0;
 
 if (isRunning) {
-  console.log("Was Running");
+  // console.log("Was Running");
   iTerm.activate();
   const windows = iTerm.windows.whose({ visible: true });
   const windowCount = windows.length;
-  console.log(`WindowCount=${windowCount}`);
+  // console.log(`WindowCount=${windowCount}`);
   if (windowCount === 0) {
-    console.log("Special Boundary Case");
+    // console.log("Special Boundary Case");
     startupCondition = 1;
   } else {
     startupCondition = 2;
   }
 } else {
-  console.log("Starting");
+  // console.log("Starting");
   iTerm.activate();
   startupCondition = 0;
 }
 
-console.log(`Starting Condition = ${startupCondition}`);
+// console.log(`Starting Condition = ${startupCondition}`);
 
 if (startupCondition === 1) {
   iTerm.createWindowWithProfile('MCP_CONTROLLED');
@@ -61,7 +61,7 @@ if (startupCondition < 5) {
   }
 
   if (!success) {
-    console.log("Failed to set foreground color after retries.");
+    // console.log("Failed to set foreground color after retries.");
   }
 }
 
@@ -70,5 +70,4 @@ const session = iTerm.currentWindow().currentSession();
 session.foregroundColor = $([65535, 65535, 65535, 0]);
 
 const thisTTY = session.tty();
-console.log(`TTY is ${thisTTY}`);
-
+// console.log(`TTY is ${thisTTY}`);
