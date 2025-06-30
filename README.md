@@ -43,14 +43,30 @@ Create this file in the root of the `iterm-mcp` project directory to configure t
 
 ## Tools
 
-*   `get_mcp_profiles`: Returns a list of the available MCP profiles that can be launched.
-*   `launch_session`: Launches a new iTerm2 session with a specific, allowed profile.
-*   `close_session`: Closes a specific MCP-controlled iTerm2 session by its TTY.
-*   `list_sessions`: Lists all active iTerm2 sessions managed by this MCP (matching the prefix).
-*   `list_all_sessions`: Lists all iTerm2 sessions regardless of controllability.
-*   `write_to_terminal`: Writes text to a specific iTerm terminal, identified by its TTY.
-*   `read_terminal_output`: Reads output from a specific iTerm terminal.
-*   `send_control_character`: Sends a control character to a specific iTerm terminal.
+*   **`get_mcp_profiles`**: Returns a list of the available MCP profiles that can be launched.
+    *   Arguments: None
+*   **`launch_session`**: Launches a new iTerm2 session with a specific, allowed profile.
+    *   Arguments:
+        *   `profile_name` (string, required): The name of the profile to launch from the `mcp_profiles` list.
+*   **`close_session`**: Closes a specific MCP-controlled iTerm2 session.
+    *   Arguments:
+        *   `tty` (string, required): The TTY of the session to close (e.g., `"/dev/ttys007"`).
+*   **`list_sessions`**: Lists all active iTerm2 sessions managed by this MCP (matching the `mcp_prefix`).
+    *   Arguments: None
+*   **`list_all_sessions`**: Lists all iTerm2 sessions regardless of controllability.
+    *   Arguments: None
+*   **`write_to_terminal`**: Writes text to a specific iTerm terminal.
+    *   Arguments:
+        *   `tty` (string, required): The TTY of the session to write to.
+        *   `command` (string, required): The command or text to write.
+*   **`read_terminal_output`**: Reads output from a specific iTerm terminal.
+    *   Arguments:
+        *   `tty` (string, required): The TTY of the session to read from.
+        *   `linesOfOutput` (number, optional): The number of recent lines to read. Defaults to 25.
+*   **`send_control_character`**: Sends a control character to a specific iTerm terminal. This is useful for interrupting a hung or long-running process (e.g., sending `C` for `Ctrl-C`).
+    *   Arguments:
+        *   `tty` (string, required): The TTY of the session to send the character to.
+        *   `letter` (string, required): The letter for the control character (e.g., `"C"`, `"D"`, `"Z"`).
 
 ## Installation
 
