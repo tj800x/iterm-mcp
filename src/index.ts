@@ -10,6 +10,7 @@ import CommandExecutor from "./CommandExecutor.js";
 import TtyOutputReader from "./TtyOutputReader.js";
 import SendControlCharacter from "./SendControlCharacter.js";
 import SessionManager from "./SessionManager.js";
+import SettingsManager from "./SettingsManager.js";
 import iTermState from "./iTermState.js";
 
 const server = new Server(
@@ -28,11 +29,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: "launch_session",
-        description: "Launches a new iTerm2 session.",
+        name: "get_mcp_profiles",
+        description: "Returns a list of the available MCP profiles that can be launched.",
         inputSchema: {
           type: "object",
           properties: {},
+        }
+      },
+      {
+        name: "launch_session",
+        description: "Launches a new iTerm2 session with a specific profile.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            "profile_name": {
+              type: "string",
+              description: "The name of the profile to launch."
+            }
+          },
+          required: ["profile_name"]
         }
       },
       {
@@ -128,8 +143,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   console.log(`Tool called: ${toolName}`);
 
   switch (toolName) {
+    case "get_mcp_profiles": {
+      const profiles = SessionManager.getMcpProfiles();
+      return { content: [{ type: "text", text: JSON.stringify(profiles, null, 2) }] };
+    }
     case "launch_session": {
-      const tty = await SessionManager.launchSession();
+      const profileName = String(request.params.arguments?.profile_name);
+      const tty = await SessionManager.launchSession(profileName);
       return { content: [{ type: "text", text: `Launched session with TTY: ${tty}` }] };
     }
     case "close_session": {

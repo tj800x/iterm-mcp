@@ -3,14 +3,20 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import iTermState, { iTermSession } from './iTermState.js';
+import SettingsManager from './SettingsManager.js';
 
 const execPromise = promisify(exec);
 
 export default class SessionManager {
-  static async launchSession(): Promise<string> {
+  static async launchSession(profileName: string): Promise<string> {
+    const { mcp_profiles } = SettingsManager.getSettings();
+    if (!mcp_profiles.includes(profileName)) {
+      throw new Error(`Profile "${profileName}" is not in the list of allowed MCP profiles.`);
+    }
+
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const scriptPath = path.join(__dirname, 'iterm_spawn.js');
-    const command = `osascript -l JavaScript ${scriptPath}`;
+    const command = `osascript -l JavaScript ${scriptPath} "${profileName}"`;
     
     const { stdout } = await execPromise(command);
     const tty = stdout.trim();
@@ -20,9 +26,14 @@ export default class SessionManager {
   }
 
   static async listSessions(): Promise<iTermSession[]> {
+    const { mcp_prefix } = SettingsManager.getSettings();
     await iTermState.getInstance().refresh();
     return iTermState.getInstance().getSessions()
-      .filter(s => s.profileName.startsWith('MCP_'));
+      .filter(s => s.profileName.startsWith(mcp_prefix));
+  }
+  
+  static getMcpProfiles(): string[] {
+    return SettingsManager.getSettings().mcp_profiles;
   }
   
   static async listAllSessions(): Promise<iTermSession[]> {
@@ -52,9 +63,10 @@ export default class SessionManager {
   }
 
   static async closeSession(tty: string): Promise<string> {
+    const { mcp_prefix } = SettingsManager.getSettings();
     const __dirname = path.dirname(fileURLToPath(import.meta.url));
     const scriptPath = path.join(__dirname, 'close_session.js');
-    const command = `osascript -l JavaScript ${scriptPath} ${tty}`;
+    const command = `osascript -l JavaScript ${scriptPath} ${tty} ${mcp_prefix}`;
     
     const { stdout } = await execPromise(command);
     return stdout.trim();

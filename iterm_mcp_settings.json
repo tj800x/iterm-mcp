@@ -1,0 +1,8 @@
+{
+  "mcp_prefix": "MCP_",
+  "mcp_profiles": [
+    "MCP_CONTROLLED",
+    "MCP_PYTHON",
+    "MCP_JULIA"
+  ]
+}
