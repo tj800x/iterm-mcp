@@ -4,7 +4,7 @@ import { promisify } from 'node:util';
 const execPromise = promisify(exec);
 
 class SendControlCharacter {
-  async send(letter: string): Promise<void> {
+  async send(tty: string, letter: string): Promise<void> {
     // Validate input
     letter = letter.toUpperCase();
     if (!/^[A-Z]$/.test(letter)) {
@@ -17,19 +17,24 @@ class SendControlCharacter {
     // AppleScript to send the control character
     const ascript = `
       tell application "iTerm2"
-        tell front window
-          tell current session of current tab
-            -- Send the control character
-            write text (ASCII character ${controlCode})
-          end tell
-        end tell
+        -- Find the session with the matching TTY and send the character.
+        repeat with w in windows
+          repeat with t in tabs of w
+            repeat with s in sessions of t
+              if tty of s is "${tty}" then
+                tell s to write text (ASCII character ${controlCode})
+                return
+              end if
+            end repeat
+          end repeat
+        end repeat
       end tell
     `;
 
     try {
       await execPromise(`osascript -e '${ascript}'`);
     } catch (error: unknown) {
-      throw new Error(`Failed to send control character: ${(error as Error).message}`);
+      throw new Error(`Failed to send control character to TTY ${tty}: ${(error as Error).message}`);
     }
   }
 }

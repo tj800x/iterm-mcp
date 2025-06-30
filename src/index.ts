@@ -12,8 +12,6 @@ import SendControlCharacter from "./SendControlCharacter.js";
 import SessionManager from "./SessionManager.js";
 import iTermState from "./iTermState.js";
 
-let activeSession: string | null = null;
-
 const server = new Server(
   {
     name: "iterm-mcp",
@@ -68,58 +66,57 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         }
       },
       {
-        name: "set_active_session",
-        description: "Sets the active iTerm2 session for subsequent commands.",
-        inputSchema: {
-          type: "object",
-          properties: {
-            sessionTty: {
-              type: "string",
-              description: "The TTY of the session to activate."
-            },
-          },
-          required: ["sessionTty"]
-        }
-      },
-      {
         name: "write_to_terminal",
-        description: "Writes text to the active iTerm terminal - often used to run a command in the terminal",
+        description: "Writes text to a specific iTerm terminal.",
         inputSchema: {
           type: "object",
           properties: {
+            tty: {
+              type: "string",
+              description: "The TTY of the session to write to."
+            },
             command: {
               type: "string",
-              description: "The command to run or text to write to the terminal"
+              description: "The command to run or text to write to the terminal."
             },
           },
-          required: ["command"]
+          required: ["tty", "command"]
         }
       },
       {
         name: "read_terminal_output",
-        description: "Reads the output from the active iTerm terminal",
+        description: "Reads the output from a specific iTerm terminal.",
         inputSchema: {
           type: "object",
           properties: {
+            tty: {
+              type: "string",
+              description: "The TTY of the session to read from."
+            },
             linesOfOutput: {
               type: "number",
               description: "The number of lines of output to read."
             },
           },
+          required: ["tty"]
         }
       },
       {
         name: "send_control_character",
-        description: "Sends a control character to the active iTerm terminal (e.g., Control-C)",
+        description: "Sends a control character to a specific iTerm terminal (e.g., Control-C).",
         inputSchema: {
           type: "object",
           properties: {
+            tty: {
+              type: "string",
+              description: "The TTY of the session to send the character to."
+            },
             letter: {
               type: "string",
-              description: "The letter corresponding to the control character (e.g., 'C' for Control-C)"
+              description: "The letter corresponding to the control character (e.g., 'C' for Control-C)."
             },
           },
-          required: ["letter"]
+          required: ["tty", "letter"]
         }
       }
     ]
@@ -128,32 +125,16 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const toolName = request.params.name;
-  console.log(`Tool called: ${toolName}, Active session: ${activeSession}`);
-  const toolsRequiringSession = [
-    "set_active_session",
-    "write_to_terminal",
-    "read_terminal_output",
-    "send_control_character",
-  ];
-
-  if (toolsRequiringSession.includes(toolName) && !activeSession) {
-    throw new Error(
-      `Tool '${toolName}' requires an active session. Please launch or set an active session.`
-    );
-  }
+  console.log(`Tool called: ${toolName}`);
 
   switch (toolName) {
     case "launch_session": {
       const tty = await SessionManager.launchSession();
-      activeSession = tty;
-      return { content: [{ type: "text", text: `Launched and activated session with TTY: ${tty}` }] };
+      return { content: [{ type: "text", text: `Launched session with TTY: ${tty}` }] };
     }
     case "close_session": {
       const tty = String(request.params.arguments?.tty);
       const result = await SessionManager.closeSession(tty);
-      if (activeSession === tty) {
-        activeSession = null;
-      }
       return { content: [{ type: "text", text: result }] };
     }
     case "list_sessions": {
@@ -164,53 +145,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const sessions = await SessionManager.listAllSessions();
       return { content: [{ type: "text", text: JSON.stringify(sessions, null, 2) }] };
     }
-    case "set_active_session": {
-      const sessionTty = String(request.params.arguments?.sessionTty);
-      await SessionManager.setActiveSession(sessionTty);
-      activeSession = sessionTty;
-      return { content: [{ type: "text", text: `Active session set to TTY: ${activeSession}` }] };
-    }
     case "write_to_terminal": {
-      let executor = new CommandExecutor();
+      const tty = String(request.params.arguments?.tty);
       const command = String(request.params.arguments?.command);
-      const beforeCommandBuffer = await TtyOutputReader.retrieveBuffer();
-      const beforeCommandBufferLines = beforeCommandBuffer.split("\n").length;
-      
-      await executor.executeCommand(command);
-      
-      const afterCommandBuffer = await TtyOutputReader.retrieveBuffer();
-      const afterCommandBufferLines = afterCommandBuffer.split("\n").length;
-      const outputLines = afterCommandBufferLines - beforeCommandBufferLines
-
-      return {
-        content: [{
-          type: "text",
-          text: `${outputLines} lines were output after sending the command to the terminal. Read the last ${outputLines} lines of terminal contents to orient yourself. Never assume that the command was executed or that it was successful.`
-        }]
-      };
+      const executor = new CommandExecutor();
+      await executor.executeCommand(tty, command);
+      return { content: [{ type: "text", text: `Wrote command to TTY ${tty}.` }] };
     }
     case "read_terminal_output": {
-      const linesOfOutput = Number(request.params.arguments?.linesOfOutput) || 25
-      const output = await TtyOutputReader.call(linesOfOutput)
-
-      return {
-        content: [{
-          type: "text",
-          text: output
-        }]
-      };
+      const tty = String(request.params.arguments?.tty);
+      const linesOfOutput = Number(request.params.arguments?.linesOfOutput) || 25;
+      const output = await TtyOutputReader.call(tty, linesOfOutput);
+      return { content: [{ type: "text", text: output }] };
     }
     case "send_control_character": {
-      const ttyControl = new SendControlCharacter();
+      const tty = String(request.params.arguments?.tty);
       const letter = String(request.params.arguments?.letter);
-      await ttyControl.send(letter);
-      
-      return {
-        content: [{
-          type: "text",
-          text: `Sent control character: Control-${letter.toUpperCase()}`
-        }]
-      };
+      const ttyControl = new SendControlCharacter();
+      await ttyControl.send(tty, letter);
+      return { content: [{ type: "text", text: `Sent Control-${letter.toUpperCase()} to TTY ${tty}.` }] };
     }
     default:
       throw new Error("Unknown tool");
